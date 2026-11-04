@@ -1,0 +1,17 @@
+# Секреты и окружение
+.env
+.venv/
+__pycache__/
+.DS_Store
+
+# Файлы, которые агент создаёт при работе (заявки, записи, передачи оператору)
+tickets.jsonl
+demo_bookings.jsonl
+handoffs.jsonl
+
+# Логи: публикуем только логи eval, на них ссылается отчёт по кэшу
+speaknode-agent/logs/*
+!speaknode-agent/logs/eval-*.jsonl
+speaknode-agent/logs/eval-2026-11-02_1604.jsonl
+speaknode-agent/logs/eval-2026-11-02_1609.jsonl
+speaknode-agent/logs/eval-2026-11-02_1728.jsonl
