@@ -122,8 +122,16 @@ def check_case(case: dict, out: dict) -> list[dict]:
 
 # ---------- Судья: другая модель читает диалог и сравнивает с критерием ----------
 
-JUDGE_MODEL = "claude-sonnet-5-5"  # не та модель, что у Ники: модель склонна хвалить свои ответы
-JUDGE_PRICE = {"input": 2.00, "output": 10.00}  # $ за 1 млн токенов
+# Судья — всегда не та модель, что у Ники: модель склонна хвалить свои ответы.
+# Обычно Ника на Opus, судья — Sonnet; если Нику запускают на Sonnet (голосовая версия), судья — Opus.
+JUDGES = {"claude-sonnet-5-5": {"input": 2.00, "output": 10.00},  # $ за 1 млн токенов
+          "claude-opus-5-5": {"input": 4.00, "output": 20.00}}
+
+
+def judge_model() -> str:
+    return "claude-opus-5-5" if agent.MODEL == "claude-sonnet-5-5" else "claude-sonnet-5-5"
+
+
 JUDGE_PROMPT = """You grade one test case of Nika, a customer-support chat agent of the company SpeakNode.
 You get the test criterion and the full transcript: what the person wrote, which tools Nika called with what data
 and what they returned, and what Nika replied.
@@ -161,7 +169,7 @@ def transcript(case: dict, out: dict, limit: int | None = None) -> str:
 def judge(client, case: dict, out: dict) -> dict:
     """Один вызов модели-судьи. Возвращает {"pass": True/False/None, "reasoning": "...", "cost_usd": ...}."""
     response = client.messages.create(
-        model=JUDGE_MODEL,
+        model=judge_model(),
         max_tokens=8000,
         system=JUDGE_PROMPT,
         messages=[{"role": "user", "content": f"<criterion>\n{case['judge']}\n</criterion>\n\n"
@@ -169,8 +177,9 @@ def judge(client, case: dict, out: dict) -> dict:
         # Ответ строго в виде {"reasoning": ..., "pass": ...}: сначала причина, потом оценка.
         output_config={"effort": "medium", "format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
     )
-    cost = (response.usage.input_tokens * JUDGE_PRICE["input"]
-            + response.usage.output_tokens * JUDGE_PRICE["output"]) / 1_000_000
+    price = JUDGES[judge_model()]
+    cost = (response.usage.input_tokens * price["input"]
+            + response.usage.output_tokens * price["output"]) / 1_000_000
     if response.stop_reason != "end_turn":
         # Судья не дал оценку (отказ, обрыв): это не провал Ники, а сбой проверки — в отчёте отдельно.
         return {"pass": None, "reasoning": f"Судья не ответил: {response.stop_reason}", "cost_usd": round(cost, 6)}
@@ -237,7 +246,7 @@ def write_report(rows: list, path: Path, info: dict) -> None:
     cache = info["cache"]
 
     md = [f"# Eval Ники: прогон {info['stamp']}", "",
-          f"Модель Ники: `{agent.MODEL}` · судья: `{JUDGE_MODEL}` · кэш: {'вкл' if info['use_cache'] else 'выкл'} · "
+          f"Модель Ники: `{agent.MODEL}` · судья: `{judge_model()}` · кэш: {'вкл' if info['use_cache'] else 'выкл'} · "
           f"прогонов на кейс: {info['runs']} · часы заморожены: {TESTS['clocks']['weekday']}", "",
           "## Итог", "",
           f"- **Прошло диалогов: {passed} из {len(scored)}** ({passed / len(scored):.0%})" if scored else "- Нет оценённых диалогов",

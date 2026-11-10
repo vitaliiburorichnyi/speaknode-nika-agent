@@ -15,3 +15,8 @@ speaknode-agent/logs/*
 speaknode-agent/logs/eval-2026-11-02_1604.jsonl
 speaknode-agent/logs/eval-2026-11-02_1609.jsonl
 speaknode-agent/logs/eval-2026-11-02_1728.jsonl
+speaknode-agent/logs/eval-2026-11-09_1645.jsonl
+speaknode-agent/logs/eval-2026-11-09_1711.jsonl
+
+# Окружение голосовой версии
+.venv-voice/
